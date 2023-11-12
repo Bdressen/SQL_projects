@@ -1,0 +1,175 @@
+USE restaurant_db;
+-- Explore the menu items table
+SELECT *
+FROM menu_items;
+
+-- Find the number of items on the menu
+SELECT
+    COUNT(DISTINCT menu_item_id) AS number_of_items
+FROM menu_items;
+
+-- What are the least and most expensive items on the menu?
+SELECT
+	item_name,
+	price
+FROM menu_items
+WHERE 
+	price = (SELECT MIN(price) FROM menu_items)
+	OR  price = (SELECT MAX(price) FROM menu_items);
+    
+-- How many dishes within each category?
+SELECT
+	category,
+    COUNT(menu_item_id) AS number_items
+FROM menu_items
+GROUP BY category;
+
+-- Least and most expensive Italian dishes?
+SELECT
+    item_name,
+    price
+FROM menu_items
+WHERE category = 'Italian'
+	AND price = (SELECT MIN(price) FROM menu_items WHERE category = 'Italian')
+    OR  price = (SELECT MAX(price) FROM menu_items WHERE category = 'Italian');
+    
+-- What is the average dish price for each category?
+SELECT
+	category,
+	ROUND(AVG(price),2) AS avg_price
+FROM menu_items
+GROUP BY category
+ORDER BY 2;
+
+-- Explore the order_details table
+SELECT * FROM order_details;
+
+-- What is the date range of the table?
+SELECT
+	MIN(order_date),
+    MAX(order_date)
+FROM order_details;
+
+-- How many orders were made in this date range?
+SELECT 
+	COUNT(DISTINCT order_id) AS orders
+FROM order_details;
+
+-- How many items were ordered?
+SELECT
+	COUNT(*)
+FROM order_details;
+
+-- Which order had the greatest number of items?
+SELECT
+	order_id,
+    COUNT(item_id) AS items_per_order
+FROM order_details
+GROUP BY 
+	order_id
+ORDER BY 2 DESC;
+
+-- How many orders had more than 12 items?
+SELECT COUNT(*)
+FROM 
+(SELECT
+	order_id,
+	COUNT(item_id) AS items_per_order
+FROM order_details
+GROUP BY 
+	order_id
+HAVING 
+	items_per_order > '12'
+) AS large_orders;
+
+-- Analyze customer Behavior
+-- Join the tables
+CREATE TEMPORARY TABLE order_menu_detail
+SELECT 
+	m.item_name,
+    m.category,
+    m.price,
+    o.order_details_id,
+    o.order_id,
+    o.order_date
+FROM order_details AS o
+	LEFT JOIN menu_items AS m 
+		ON m.menu_item_id = o.item_id;
+
+-- What were the least and most ordered items? In what categories?
+SELECT 
+	item_name,
+    category,
+    COUNT(order_id) AS quantity
+FROM order_menu_detail
+GROUP BY 
+	item_name,
+	category
+ORDER BY 3 DESC;
+
+-- Quantity and Price per category?
+SELECT 
+    category,
+    COUNT(order_id) AS quantity,
+    SUM(price) AS total
+FROM order_menu_detail
+GROUP BY 
+	category
+ORDER BY 3 DESC;
+
+-- What were the top 5 orders with most money spent?
+SELECT
+	order_id,
+    SUM(price) AS total
+FROM order_menu_detail
+GROUP BY order_id
+ORDER BY total DESC
+LIMIT 5;
+
+-- On the highest spend order, which specific items were purchased?
+SELECT
+	order_id,
+    item_name,
+    price,
+    category
+FROM order_menu_detail
+WHERE order_id = '440'
+ORDER BY price DESC;
+
+-- Which category was the most popular in the highest spenders?
+SELECT
+	category,
+	COUNT(order_id) quantity,
+    SUM(price) AS total
+FROM order_menu_detail
+WHERE order_id = '440'
+GROUP BY category
+ORDER BY 3 DESC;
+
+-- View details on the top 5 highest spend orders.
+SELECT
+	order_id,
+    price,
+    item_name,
+    category
+FROM order_menu_detail
+WHERE order_id IN (440, 2075, 1957, 330, 2675)
+ORDER BY order_id;
+
+SELECT
+	order_id,
+    category,
+    SUM(price) AS total,
+    COUNT(order_id) AS quantity
+FROM order_menu_detail
+WHERE order_id IN (440, 2075, 1957, 330, 2675)
+GROUP BY order_id, category;
+
+SELECT
+	category,
+	COUNT(order_id) quantity,
+    SUM(price) AS total
+FROM order_menu_detail
+WHERE order_id IN (440, 2075, 1957, 330, 2675)
+GROUP BY category
+ORDER BY 3 DESC;
